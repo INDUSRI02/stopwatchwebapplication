@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stopwatch Web Application </title>
+<style>
+  /* Reset & base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    background: #f9f9f9;
+    color: #222;
+  }
+  header {
+    background: #0066cc;
+    color: white;
+    padding: 1rem 2rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.5rem;
+    user-select: none;
+  }
+  nav {
+    background: #004a99;
+    display: flex;
+    justify-content: center;
+  }
+  nav button {
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  nav button:hover, nav button.active {
+    background: #003366;
+  }
+  main {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  section {
+    display: none;
+    animation: fadeIn 0.5s ease forwards;
+  }
+  section.active {
+    display: block;
+  }
+  @keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+  }
+
+  /* Stopwatch Styles */
+  .stopwatch {
+    text-align: center;
+  }
+  .display {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .controls button {
+    background: #0066cc;
+    border: none;
+    color: white;
+    padding: 0.7rem 1.5rem;
+    margin: 0 0.5rem;
+    font-size: 1.1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  .controls button:hover:not(:disabled) {
+    background: #004a99;
+  }
+  .controls button:disabled {
+    background: #99c2ff;
+    cursor: not-allowed;
+  }
+  .laps {
+    margin-top: 1rem;
+    text-align: left;
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid #ddd;
+    padding-top: 0.5rem;
+  }
+  .laps ul {
+    list-style-type: none;
+    padding-left: 0;
+  }
+  .laps li {
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #eee;
+    font-family: monospace;
+  }
+
+  /* Analog Clock Styles */
+  .clock-container {
+    margin: 2rem auto;
+    width: 250px;
+    height: 250px;
+    border: 12px solid #0066cc;
+    border-radius: 50%;
+    position: relative;
+    background: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  .clock-center {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    background: #0066cc;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+  }
+  .hand {
+    position: absolute;
+    background: #0066cc;
+    top: 50%;
+    left: 50%;
+    transform-origin: bottom center;
+    transform: rotate(0deg);
+    transition: transform 0.05s ease-in-out;
+  }
+  .hand.hour {
+    width: 6px;
+    height: 60px;
+    border-radius: 3px;
+    margin-left: -3px;
+    margin-top: -60px;
+    z-index: 7;
+  }
+  .hand.minute {
+    width: 4px;
+    height: 90px;
+    border-radius: 2px;
+    margin-left: -2px;
+    margin-top: -90px;
+    z-index: 8;
+  }
+  .hand.second {
+    width: 2px;
+    height: 110px;
+    background: #cc0000;
+    margin-left: -1px;
+    margin-top: -110px;
+    z-index: 9;
+  }
+
+  /* Timer & Alarm Styles */
+  .timer, .alarm {
+    text-align: center;
+  }
+  input[type="number"] {
+    width: 60px;
+    font-size: 1.2rem;
+    padding: 0.3rem;
+    margin: 0 0.3rem;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    text-align: center;
+  }
+  .timer-display, .alarm-display {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 1rem 0;
+    font-family: monospace;
+  }
+  .timer-controls button, .alarm-controls button {
+    background: #0066cc;
+    border: none;
+    color: white;
+    padding: 0.7rem 1.5rem;
+    margin: 0 0.5rem;
+    font-size: 1.1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  .timer-controls button:hover, .alarm-controls button:hover {
+    background: #004a99;
+  }
+  .alarm-message {
+    margin-top: 1rem;
+    font-weight: 600;
+    color: #cc0000;
+  }
+</style>
+</head>
+<body>
+
+<header>Stopwatch Web Application</header>
+
+<nav>
+  <button class="nav-btn active" data-target="stopwatch">Stopwatch</button>
+  <button class="nav-btn" data-target="timer">Timer</button>
+  <button class="nav-btn" data-target="alarm">Alarm</button>
+  <button class="nav-btn" data-target="clock">Analog Clock</button>
+</nav>
+
+<main>
+  <!-- Stopwatch Section -->
+  <section id="stopwatch" class="active">
+    <div class="stopwatch">
+      <div class="display" id="sw-display">00:00:00.000</div>
+      <div class="controls">
+        <button id="sw-start">Start</button>
+        <button id="sw-pause" disabled>Pause</button>
+        <button id="sw-reset" disabled>Reset</button>
+        <button id="sw-lap" disabled>Lap</button>
+      </div>
+      <div class="laps">
+        <ul id="laps-list"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Timer Section -->
+  <section id="timer">
+    <div class="timer">
+      <div>
+        <label>Hours: <input type="number" id="timer-hours" min="0" max="99" value="0"></label>
+        <label>Minutes: <input type="number" id="timer-minutes" min="0" max="59" value="0"></label>
+        <label>Seconds: <input type="number" id="timer-seconds" min="0" max="59" value="0"></label>
+      </div>
+      <div class="timer-display" id="timer-display">00:00:00</div>
+      <div class="timer-controls">
+        <button id="timer-start">Start</button>
+        <button id="timer-pause" disabled>Pause</button>
+        <button id="timer-reset" disabled>Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Alarm Section -->
+  <section id="alarm">
+    <div class="alarm">
+      <div>
+        <label>Set Alarm (HH:MM, 24h): </label>
+        <input type="time" id="alarm-time">
+      </div>
+      <div class="alarm-controls" style="margin-top:1rem;">
+        <button id="alarm-set">Set Alarm</button>
+        <button id="alarm-clear" disabled>Clear Alarm</button>
+      </div>
+      <div class="alarm-message" id="alarm-message"></div>
+    </div>
+  </section>
+
+  <!-- Analog Clock Section -->
+  <section id="clock">
+    <div class="clock-container">
+      <div class="hand hour" id="hour-hand"></div>
+      <div class="hand minute" id="minute-hand"></div>
+      <div class="hand second" id="second-hand"></div>
+      <div class="clock-center"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  // NAVIGATION
+  const navButtons = document.querySelectorAll('nav button');
+  const sections = document.querySelectorAll('main section');
+  navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      navButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const target = btn.getAttribute('data-target');
+      sections.forEach(section => {
+        section.classList.toggle('active', section.id === target);
+      });
+    });
+  });
+
+  // STOPWATCH
+  const swDisplay = document.getElementById('sw-display');
+  const swStartBtn = document.getElementById('sw-start');
+  const swPauseBtn = document.getElementById('sw-pause');
+  const swResetBtn = document.getElementById('sw-reset');
+  const swLapBtn = document.getElementById('sw-lap');
+  const lapsList = document.getElementById('laps-list');
+
+  let swStartTime = 0;
+  let swElapsed = 0;
+  let swTimerInterval;
+  let swRunning = false;
+  let lapNumber = 0;
+
+  function formatTime(ms) {
+    const milliseconds = ms % 1000;
+    const totalSeconds = Math.floor(ms / 1000);
+    const seconds = totalSeconds % 60;
+    const totalMinutes = Math.floor(totalSeconds / 60);
+    const minutes = totalMinutes % 60;
+    const hours = Math.floor(totalMinutes / 60);
+    return (
+      String(hours).padStart(2, '0') + ':' +
+      String(minutes).padStart(2, '0') + ':' +
+      String(seconds).padStart(2, '0') + '.' +
+      String(milliseconds).padStart(3, '0')
+    );
+  }
+
+  function updateSwDisplay() {
+    const now = Date.now();
+    swElapsed = now - swStartTime;
+    swDisplay.textContent = formatTime(swElapsed);
+  }
+
+  swStartBtn.addEventListener('click', () => {
+    if (!swRunning) {
+      swStartTime = Date.now() - swElapsed;
+      swTimerInterval = setInterval(updateSwDisplay, 10);
+      swRunning = true;
+      swStartBtn.disabled = true;
+      swPauseBtn.disabled = false;
+      swResetBtn.disabled = false;
+      swLapBtn.disabled = false;
+    }
+  });
+
+  swPauseBtn.addEventListener('click', () => {
+    if (swRunning) {
+      clearInterval(swTimerInterval);
+      swRunning = false;
+      swStartBtn.disabled = false;
+      swPauseBtn.disabled = true;
+      swLapBtn.disabled = true;
+    }
+  });
+
+  swResetBtn.addEventListener('click', () => {
+    clearInterval(swTimerInterval);
+    swRunning = false;
+    swElapsed = 0;
+    swDisplay.textContent = '00:00:00.000';
+    swStartBtn.disabled = false;
+    swPauseBtn.disabled = true;
+    swResetBtn.disabled = true;
+    swLapBtn.disabled = true;
+    lapsList.innerHTML = '';
+    lapNumber = 0;
+  });
+
+  swLapBtn.addEventListener('click', () => {
+    if (swRunning) {
+      lapNumber++;
+      const li = document.createElement('li');
+      li.textContent = `Lap ${lapNumber}: ${formatTime(swElapsed)}`;
+      lapsList.prepend(li);
+    }
+  });
+
+  // TIMER
+  const timerHours = document.getElementById('timer-hours');
+  const timerMinutes = document.getElementById('timer-minutes');
+  const timerSeconds = document.getElementById('timer-seconds');
+  const timerDisplay = document.getElementById('timer-display');
+  const timerStartBtn = document.getElementById('timer-start');
+  const timerPauseBtn = document.getElementById('timer-pause');
+  const timerResetBtn = document.getElementById('timer-reset');
+
+  let timerTotalSeconds = 0;
+  let timerRemainingSeconds = 0;
+  let timerInterval;
+  let timerRunning = false;
+
+  function formatTimerTime(sec) {
+    const hours = Math.floor(sec / 3600);
+    const minutes = Math.floor((sec % 3600) / 60);
+    const seconds = sec % 60;
+    return (
+      String(hours).padStart(2, '0') + ':' +
+      String(minutes).padStart(2, '0') + ':' +
+      String(seconds).padStart(2, '0')
+    );
+  }
+
+  function updateTimerDisplay() {
+    timerDisplay.textContent = formatTimerTime(timerRemainingSeconds);
+  }
+
+  timerStartBtn.addEventListener('click', () => {
+    // Calculate total seconds from inputs
+    timerTotalSeconds =
+      Number(timerHours.value) * 3600 +
+      Number(timerMinutes.value) * 60 +
+      Number(timerSeconds.value);
+
+    if (timerTotalSeconds <= 0) {
+      alert('Please enter a positive time for the timer.');
+      return;
+    }
+    timerRemainingSeconds = timerTotalSeconds;
+    updateTimerDisplay();
+
+    if (!timerRunning) {
+      timerInterval = setInterval(() => {
+        timerRemainingSeconds--;
+        updateTimerDisplay();
+        if (timerRemainingSeconds <= 0) {
+          clearInterval(timerInterval);
+          alert('Timer completed!');
+          timerRunning = false;
+          timerStartBtn.disabled = false;
+          timerPauseBtn.disabled = true;
+          timerResetBtn.disabled = false;
+        }
+      }, 1000);
+
+      timerRunning = true;
+      timerStartBtn.disabled = true;
+      timerPauseBtn.disabled = false;
+      timerResetBtn.disabled = false;
+      timerHours.disabled = true;
+      timerMinutes.disabled = true;
+      timerSeconds.disabled = true;
+    }
+  });
+
+  timerPauseBtn.addEventListener('click', () => {
+    if (timerRunning) {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      timerStartBtn.disabled = false;
+      timerPauseBtn.disabled = true;
+    }
+  });
+
+  timerResetBtn.addEventListener('click', () => {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    timerRemainingSeconds = 0;
+    timerDisplay.textContent = '00:00:00';
+    timerStartBtn.disabled = false;
+    timerPauseBtn.disabled = true;
+    timerResetBtn.disabled = true;
+    timerHours.disabled = false;
+    timerMinutes.disabled = false;
+    timerSeconds.disabled = false;
+    timerHours.value = 0;
+    timerMinutes.value = 0;
+    timerSeconds.value = 0;
+  });
+
+  // ALARM
+  const alarmTimeInput = document.getElementById('alarm-time');
+  const alarmSetBtn = document.getElementById('alarm-set');
+  const alarmClearBtn = document.getElementById('alarm-clear');
+  const alarmMessage = document.getElementById('alarm-message');
+
+  let alarmTimeout;
+
+  alarmSetBtn.addEventListener('click', () => {
+    const alarmTimeValue = alarmTimeInput.value;
+    if (!alarmTimeValue) {
+      alert('Please select a valid alarm time.');
+      return;
+    }
+
+    const now = new Date();
+    const [alarmHour, alarmMinute] = alarmTimeValue.split(':').map(Number);
+
+    const alarmDate = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      alarmHour,
+      alarmMinute,
+      0,
+      0
+    );
+
+    if (alarmDate <= now) {
+      // Set for next day if time already passed today
+      alarmDate.setDate(alarmDate.getDate() + 1);
+    }
+
+    const timeToAlarm = alarmDate - now;
+
+    alarmTimeout = setTimeout(() => {
+      alert('Alarm ringing!');
+      alarmMessage.textContent = 'Alarm ringing!';
+      alarmSetBtn.disabled = false;
+      alarmClearBtn.disabled = true;
+    }, timeToAlarm);
+
+    alarmSetBtn.disabled = true;
+    alarmClearBtn.disabled = false;
+    alarmMessage.textContent = `Alarm set for ${alarmTimeValue}`;
+  });
+
+  alarmClearBtn.addEventListener('click', () => {
+    clearTimeout(alarmTimeout);
+    alarmSetBtn.disabled = false;
+    alarmClearBtn.disabled = true;
+    alarmMessage.textContent = 'Alarm cleared.';
+  });
+
+  // ANALOG CLOCK
+  const hourHand = document.getElementById('hour-hand');
+  const minuteHand = document.getElementById('minute-hand');
+  const secondHand = document.getElementById('second-hand');
+
+  function updateClock() {
+    const now = new Date();
+    const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
+    const minutes = now.getMinutes() + seconds / 60;
+    const hours = now.getHours() % 12 + minutes / 60;
+
+    const secondsDeg = (seconds / 60) * 360;
+    const minutesDeg = (minutes / 60) * 360;
+    const hoursDeg = (hours / 12) * 360;
+
+    secondHand.style.transform = `rotate(${secondsDeg}deg)`;
+    minuteHand.style.transform = `rotate(${minutesDeg}deg)`;
+    hourHand.style.transform = `rotate(${hoursDeg}deg)`;
+  }
+
+  setInterval(updateClock, 50);
+  updateClock();
+</script>
+
+</body>
+</html>
